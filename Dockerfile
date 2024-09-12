@@ -1,5 +1,9 @@
 #syntax=docker/dockerfile:1
 
+# Files
+FROM scratch as files_upstream
+COPY . ./
+
 # Versions
 FROM dunglas/frankenphp:1-php8.3 AS frankenphp_upstream
 
@@ -41,9 +45,9 @@ ENV PHP_INI_SCAN_DIR=":$PHP_INI_DIR/app.conf.d"
 ###> recipes ###
 ###< recipes ###
 
-COPY --link frankenphp/conf.d/10-app.ini $PHP_INI_DIR/app.conf.d/
-COPY --link --chmod=755 frankenphp/docker-entrypoint.sh /usr/local/bin/docker-entrypoint
-COPY --link frankenphp/Caddyfile /etc/caddy/Caddyfile
+COPY --from=files_upstream frankenphp/conf.d/10-app.ini $PHP_INI_DIR/app.conf.d/
+COPY --from=files_upstream --chmod=755 frankenphp/docker-entrypoint.sh /usr/local/bin/docker-entrypoint
+COPY --from=files_upstream frankenphp/Caddyfile /etc/caddy/Caddyfile
 
 ENTRYPOINT ["docker-entrypoint"]
 
@@ -62,7 +66,7 @@ RUN set -eux; \
 		xdebug \
 	;
 
-COPY --link frankenphp/conf.d/20-app.dev.ini $PHP_INI_DIR/app.conf.d/
+COPY --from=files_upstream frankenphp/conf.d/20-app.dev.ini $PHP_INI_DIR/app.conf.d/
 
 CMD [ "frankenphp", "run", "--config", "/etc/caddy/Caddyfile", "--watch" ]
 
@@ -72,18 +76,20 @@ FROM frankenphp_base AS frankenphp_prod
 ENV APP_ENV=prod
 ENV FRANKENPHP_CONFIG="import worker.Caddyfile"
 
-RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
+RUN mv "$PHP_INFROM files_upstreamI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 
-COPY --link frankenphp/conf.d/20-app.prod.ini $PHP_INI_DIR/app.conf.d/
-COPY --link frankenphp/worker.Caddyfile /etc/caddy/worker.Caddyfile
+COPY --from=files_upstream frankenphp/conf.d/20-app.prod.ini $PHP_INI_DIR/app.conf.d/
+COPY --from=files_upstream frankenphp/worker.Caddyfile /etc/caddy/worker.Caddyfile
 
 # prevent the reinstallation of vendors at every changes in the source code
-COPY --link composer.* symfony.* ./
+COPY --from=files_upstream composer.* ./
+COPY --from=files_upstream symfony.* ./
+
 RUN set -eux; \
 	composer install --no-cache --prefer-dist --no-dev --no-autoloader --no-scripts --no-progress
 
 # copy sources
-COPY --link . ./
+COPY --from=files_upstream . ./
 RUN rm -Rf frankenphp/
 
 RUN set -eux; \

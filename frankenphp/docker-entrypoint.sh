@@ -5,16 +5,19 @@ if [ "$1" = 'frankenphp' ] || [ "$1" = 'php' ] || [ "$1" = 'bin/console' ]; then
 	# Install the project the first time PHP is started
 	# After the installation, the following block can be deleted
 	if [ ! -f composer.json ]; then
-		rm -Rf tmp/
-		composer create-project "symfony/skeleton $SYMFONY_VERSION" tmp --stability="$STABILITY" --prefer-dist --no-progress --no-interaction --no-install
+		rm -Rf /app/tmp/
+		composer create-project "symfony/skeleton $SYMFONY_VERSION" /app/tmp --stability="$STABILITY" --prefer-dist --no-progress --no-interaction --no-install
 
-		cd tmp
+		cd /app/tmp
 		cp -Rp . ..
 		cd -
-		rm -Rf tmp/
+		rm -Rf /app/tmp/
+
+		ls -al public
 
 		composer require "php:>=$PHP_VERSION" runtime/frankenphp-symfony
 		composer config --json extra.symfony.docker 'true'
+		composer config --no-plugins allow-plugins.symfony/runtime 'true'
 
 		if grep -q ^DATABASE_URL= .env; then
 			echo "To finish the installation please press Ctrl+C to stop Docker Compose and run: docker compose up --build -d --wait"
